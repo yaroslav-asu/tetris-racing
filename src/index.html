@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tetris race</title>
+    <script src="js/main.js"></script>
+    <link rel="stylesheet" href="scss/style.css">
+</head>
+<body>
+<div class="window_wrapper">
+    <div class="row main_wrapper">
+        <div class="decorative_blocks">
+            <div class="o">
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+
+            <div class="s">
+                <div class="block decorative"></div>
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class=""></div>
+
+                <div class="block decorative"></div>
+            </div>
+            <div class="j">
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+            <div class="t">
+                <div class="block decorative"></div>
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class=""></div>
+            </div>
+            <div class="z">
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+            <div class="l">
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+        </div>
+        <div class="game_screen">
+            <div class="game">
+                <div class="game_wrapper">
+                    <table class="border"></table>
+                    <table class="blank_line"></table>
+                    <table id="field"></table>
+                    <table class="blank_line"></table>
+                    <table class="border"></table>
+                </div>
+                <div class="interface">
+                    <p class="interface_text"><span id="score"></span><br>Score</p>
+                    <p class="interface_text"><span id="speed"></span><br>Speed</p>
+                    <p class="interface_text pause--inactive" id="pause">Pause</p>
+                </div>
+            </div>
+            <nav class="game_buttons">
+                <div class="row">
+                    <div class="col">
+                        <button class="control_button" id="up"></button>
+                        <p>Up</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <button class="control_button" id="left"></button>
+                        <p>Left</p>
+                    </div>
+                    <img src="assets/cross-arrows-icon.svg" alt="" class="cross">
+                    <div class="col">
+                        <button class="control_button" id="right"></button>
+                        <p>Right</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <button class="control_button" id="down"></button>
+                        <p>Restart</p>
+                    </div>
+                </div>
+
+            </nav>
+        </div>
+        <div class="decorative_blocks">
+
+
+            <div class="z">
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+            <div class="l">
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+            <div class="o">
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+            <div class="t">
+                <div class="block decorative"></div>
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class=""></div>
+            </div>
+            <div class="j">
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+            </div>
+            <div class="s">
+                <div class="block decorative"></div>
+                <div class=""></div>
+                <div class="block decorative"></div>
+                <div class="block decorative"></div>
+                <div class=""></div>
+
+                <div class="block decorative"></div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+</body>
+</html>
