@@ -1,3 +1,5 @@
+import magic from './magic.js'
+
 function getCookie(name) {
     function escape(s) {
         return s.replace(/([.*+?\^$(){}|\[\]\/\\])/g, '\\$1');
@@ -93,6 +95,10 @@ class Game {
     }
 
     update() {
+        if (this.score >= 1000 && this.isOn) {
+            magic(this)
+            return
+        }
         if (!this.endShown && !this.isOn) {
             this.endGame()
             this.endShown = true
@@ -101,7 +107,7 @@ class Game {
         if (this.score >= 30) {
             this.increaseLines(3)
         }
-        if (this.lastSpeedChangeScore !== this.score && this.score % 10 === 0 && this.speed >= 45) {
+        if (this.lastSpeedChangeScore !== this.score && this.score % 100 === 0 && this.speed >= 60) {
             this.updateSpeed(this.speed - 10)
             this.lastSpeedChangeScore = this.score
         }
