@@ -1,3 +1,12 @@
+function getCookie(name) {
+    function escape(s) {
+        return s.replace(/([.*+?\^$(){}|\[\]\/\\])/g, '\\$1');
+    }
+
+    let match = document.cookie.match(RegExp('(?:^|;\\s*)' + escape(name) + '=([^;]*)'));
+    return match ? match[1] : null;
+}
+
 class Game {
     endShown = false
     isOn = true
@@ -7,9 +16,11 @@ class Game {
     height = 24
     width = 2
     activeChar = '■'
+    inactiveChar = '□'
     loop = null
     lastSpeedChangeScore = -1
     speedUp = false
+    paused = false
 
     constructor() {
         this.field = new Field(this)
@@ -20,6 +31,7 @@ class Game {
     }
 
     start() {
+        this.paused = false
         this.loop = setInterval(() => {
             this.update()
             this.render()
@@ -27,8 +39,13 @@ class Game {
     }
 
     updateSpeed(newSpeed) {
+        if (this.paused) return
         this.speed = newSpeed
         clearInterval(this.loop)
+        setTimeout(() => {
+            this.update()
+            this.render()
+        })
         this.loop = setInterval(() => {
             this.update()
             this.render()
@@ -38,12 +55,13 @@ class Game {
     pause() {
         clearInterval(this.loop)
         this.loop = null
+        this.paused = true
     }
 
-    changeWidth(newWidth) {
+    increaseLines(newWidth) {
+        if (newWidth < this.width) return
         this.width = newWidth
-        this.field.init()
-        this.field.fieldWidth = this.width * 3
+        this.field.increaseLines(newWidth)
         this.field.update()
         this.field.render()
     }
@@ -52,8 +70,26 @@ class Game {
         this.field.render()
         this.border.render()
         this.blankLine.render()
-        if (!this.isOn) return
         this.interface.render()
+    }
+
+    print() {
+        if (this.isOn) {
+            this.update()
+        } else if (!this.endShown) {
+            this.endGame()
+            this.endShown = true
+        }
+        for (let i = 0; i < this.height; i++) {
+            console.log(
+                this.border.blocks[i],
+                this.blankLine.blocks[i],
+                this.field.blocks[i].join(' '),
+                this.blankLine.blocks[i],
+                this.border.blocks[i],
+                '                        ', i
+            )
+        }
     }
 
     update() {
@@ -62,12 +98,10 @@ class Game {
             this.endShown = true
         }
         if (!this.isOn) return
-        if (this.score === 30) {
-            this.changeWidth(3)
-        } else if (this.score >= 1000) {
-            alert(process.env.FLAG)
+        if (this.score >= 30) {
+            this.increaseLines(3)
         }
-        if (this.lastSpeedChangeScore !== this.score && this.score % 100 === 0 && this.speed >= 45) {
+        if (this.lastSpeedChangeScore !== this.score && this.score % 10 === 0 && this.speed >= 45) {
             this.updateSpeed(this.speed - 10)
             this.lastSpeedChangeScore = this.score
         }
@@ -80,63 +114,106 @@ class Game {
         this.field.endGame()
         this.border.endGame()
         this.blankLine.endGame()
+        this.saveBestScore()
+    }
+
+    saveBestScore() {
+        let bestScore = getCookie('score')
+        if (bestScore === null || bestScore < this.score) {
+            document.cookie = 'score=' + this.score
+        }
     }
 }
 
 class Interface {
+    hiScoreBlinking = false
+    hiScoreLoop = null
+
     constructor(game) {
         this.game = game
         this.render()
+        document.getElementById('hi_score').style.opacity = '0.3'
+        document.getElementById('pause_text').setAttribute('class', 'interface_text pause--inactive')
     }
 
     render() {
-        let score = document.getElementById('score')
-        score.innerHTML = ('0000' + this.game.score.toString()).slice(-5)
-        let speed = document.getElementById('speed')
+        if (this.game.isOn) {
+            let speed = document.getElementById('speed')
+            let speedValue = ('0000' + (Math.trunc((150 - this.game.speed) / 10)).toString()).slice(-5)
+            if (speed.innerHTML !== speedValue) speed.innerHTML = speedValue
 
-        speed.innerHTML = ('0000' + (Math.trunc((150 - this.game.speed) / 10)).toString()).slice(-5)
+            let score = document.getElementById('score')
+            let scoreValue = ('0000' + this.game.score.toString()).slice(-5)
+            if (score.innerHTML !== scoreValue) score.innerHTML = scoreValue
+        } else {
+            let speed = document.getElementById('speed')
+            if (speed.innerHTML !== '00000') speed.innerHTML = '00000'
+
+            if (!this.hiScoreBlinking) {
+                this.hiScoreBlinking = true
+                let hiScore = document.getElementById('hi_score')
+                let counter = 0
+                this.hiScoreLoop = setInterval(() => {
+                    hiScore.style.opacity = hiScore.style.opacity === "0.3" ? '1' : '0.3'
+                    let score = document.getElementById('score')
+
+                    if (counter) {
+                        let bestScore = getCookie('score')
+                        score.innerHTML = ('0000' + bestScore).slice(-5)
+                    } else {
+                        score.innerHTML = ('0000' + this.game.score.toString()).slice(-5)
+                    }
+                    counter = counter ? 0 : 1
+                }, 1000)
+            }
+        }
+    }
+
+    destroy() {
+        clearInterval(this.hiScoreLoop)
     }
 }
 
 class Border {
-    border = []
-    borderChar = '■'
+    blocks = []
 
     constructor(game) {
         this.game = game
         for (let i = 0; i < this.game.height / 4; i++) {
-            this.border.push(0)
-            this.border.push(this.borderChar)
-            this.border.push(this.borderChar)
-            this.border.push(this.borderChar)
+            this.blocks.push(this.game.inactiveChar)
+            this.blocks.push(this.game.activeChar)
+            this.blocks.push(this.game.activeChar)
+            this.blocks.push(this.game.activeChar)
         }
     }
 
     update() {
         for (let i = this.game.height - 1; i >= 0; i--) {
-            this.border[i + 1] = this.border[i]
+            this.blocks[i + 1] = this.blocks[i]
         }
-        if (this.border[4] === 0) {
-            this.border[0] = 0
-            this.border[1] = this.borderChar
-            this.border[2] = this.borderChar
-            this.border[3] = this.borderChar
+        if (this.blocks[4] === this.game.inactiveChar) {
+            this.blocks[0] = this.game.inactiveChar
+            this.blocks[1] = this.game.activeChar
+            this.blocks[2] = this.game.activeChar
+            this.blocks[3] = this.game.activeChar
         }
     }
 
     render() {
-        let borders = document.getElementsByClassName('border')
+        let borders = document.getElementsByClassName('field_border')
         for (let border of borders) {
-            border.innerHTML = ''
+            if (border.children.length === 0) {
+                for (let i = 0; i < this.game.height - 4; i++) {
+                    let block = document.createElement('td')
+                    block.setAttribute('class', 'block')
+                    border.appendChild(block)
+                }
+            }
             for (let i = 4; i < this.game.height; i++) {
-                if (this.border[i] === this.borderChar) {
-                    let activeBlock = document.createElement('td')
-                    activeBlock.setAttribute('class', 'block block--active')
-                    border.appendChild(activeBlock)
+                if (this.blocks[i] === this.game.activeChar) {
+                    border.children[i - 4].setAttribute('class', 'block block--active')
                 } else {
-                    let inactiveBlock = document.createElement('td')
-                    inactiveBlock.setAttribute('class', 'block block--inactive')
-                    border.appendChild(inactiveBlock)
+                    border.children[i - 4].setAttribute('class', 'block block--inactive')
                 }
             }
         }
@@ -146,13 +223,13 @@ class Border {
         for (let i = this.game.height - 1; i >= 0; i--) {
             setTimeout(() => {
 
-                this.border[i] = this.borderChar
+                this.blocks[i] = this.game.activeChar
             }, 24 * this.game.endAnimationSpeed - i * this.game.endAnimationSpeed)
         }
         setTimeout(() => {
             for (let i = this.game.height - 1; i >= 0; i--) {
                 setTimeout(() => {
-                    this.border[i] = 0
+                    this.blocks[i] = this.game.inactiveChar
                 }, i * this.game.endAnimationSpeed)
             }
         }, 24 * this.game.endAnimationSpeed + this.game.endAnimationSpeed * 2)
@@ -165,23 +242,25 @@ class BlankLine {
     constructor(game) {
         this.game = game
         for (let i = 0; i < this.game.height; i++) {
-            this.blocks.push(0)
+            this.blocks.push(this.game.inactiveChar)
         }
     }
 
     render() {
-        let blocks = document.getElementsByClassName('blank_line')
+        let blocks = document.getElementsByClassName('field_blank_line')
         for (let i = 0; i < blocks.length; i++) {
-            blocks[i].innerHTML = ''
+            if (blocks[i].children.length === 0) {
+                for (let j = 0; j < this.game.height - 4; j++) {
+                    let block = document.createElement('td')
+                    block.setAttribute('class', 'block')
+                    blocks[i].appendChild(block)
+                }
+            }
             for (let j = 4; j < this.game.height; j++) {
-                if (this.blocks[j] === 0) {
-                    let block = document.createElement('td')
-                    block.setAttribute('class', 'block block--inactive')
-                    blocks[i].appendChild(block)
+                if (this.blocks[j] === this.game.inactiveChar) {
+                    blocks[i].children[j - 4].setAttribute('class', 'block block--inactive')
                 } else {
-                    let block = document.createElement('td')
-                    block.setAttribute('class', 'block block--active')
-                    blocks[i].appendChild(block)
+                    blocks[i].children[j - 4].setAttribute('class', 'block block--active')
                 }
             }
         }
@@ -196,7 +275,7 @@ class BlankLine {
         setTimeout(() => {
             for (let i = this.game.height - 1; i >= 0; i--) {
                 setTimeout(() => {
-                    this.blocks[i] = 0
+                    this.blocks[i] = this.game.inactiveChar
                 }, i * this.game.endAnimationSpeed)
             }
         }, this.game.height * this.game.endAnimationSpeed + this.game.endAnimationSpeed * 2)
@@ -204,10 +283,8 @@ class BlankLine {
 }
 
 class Field {
-    blockChar = '■'
-    field = []
+    blocks = []
     carLine = 0
-
     carsRowsGap = 0
 
     constructor(game) {
@@ -220,25 +297,33 @@ class Field {
 
     init() {
         for (let i = 0; i < this.game.height; i++) {
-            this.field[i] = [];
+            this.blocks[i] = [];
             for (let j = 0; j < this.fieldWidth; j++) {
-                this.field[i][j] = 0;
+                this.blocks[i][j] = this.game.inactiveChar;
             }
         }
     }
 
+    increaseLines(newWidth) {
+        for (let i = 0; i < this.game.height; i++) {
+            for (let j = 0; j < newWidth - this.fieldWidth; j++) {
+                this.blocks[i].push(this.game.inactiveChar)
+            }
+        }
+        this.fieldWidth = newWidth * 3
+    }
+
     checkCollision(x = this.carLine * 3) {
         let carChars = [
-            this.field[this.game.height - 4][x + 1],
-            this.field[this.game.height - 3][x],
-            this.field[this.game.height - 3][x + 1],
-            this.field[this.game.height - 3][x + 2],
-            this.field[this.game.height - 2][x + 1],
-            this.field[this.game.height - 1][x],
-            this.field[this.game.height - 1][x + 2]
+            this.blocks[this.game.height - 4][x + 1],
+            this.blocks[this.game.height - 3][x],
+            this.blocks[this.game.height - 3][x + 1],
+            this.blocks[this.game.height - 3][x + 2],
+            this.blocks[this.game.height - 2][x + 1],
+            this.blocks[this.game.height - 1][x],
+            this.blocks[this.game.height - 1][x + 2]
         ]
-
-        return carChars.includes(this.blockChar)
+        return carChars.includes(this.game.activeChar)
     }
 
     update() {
@@ -247,25 +332,23 @@ class Field {
             field.setAttribute('class', 'field--two_lined')
         }
         if (field.className === 'field--two_lined' && this.game.width > 2) {
-            console.log("three")
             field.setAttribute('class', 'field--three_lined')
         }
 
         this.deleteCar(this.game.height - 1, this.carLine * 3 + 1)
         for (let i = this.game.height - 1; i > 0; i--) {
             for (let j = 0; j < this.fieldWidth; j++) {
-                this.field[i][j] = this.field[i - 1][j]
+                this.blocks[i][j] = this.blocks[i - 1][j]
             }
         }
-        this.field[0] = []
+        this.blocks[0] = []
         for (let j = 0; j < this.fieldWidth; j++) {
-            this.field[0][j] = 0
+            this.blocks[0][j] = this.game.inactiveChar
         }
         this.game.isOn = !this.checkCollision()
         this.addCar(this.game.height - 1, this.carLine * 3 + 1)
-        this.carsRowsGap++
+        this.carsRowsGap = (this.carsRowsGap + 1) % 15
         if (this.carsRowsGap === 14) {
-            this.carsRowsGap = 0
             this.generateCar()
         }
     }
@@ -278,7 +361,6 @@ class Field {
                 this.addCar(3, x - 3)
             } else {
                 this.addCar(3, Math.floor(Math.random() * (this.game.width)) * 3 + 1)
-
             }
         } else {
             this.addCar(3, Math.floor(Math.random() * (this.game.width)) * 3 + 1)
@@ -291,23 +373,23 @@ class Field {
     }
 
     addCar(y, x) {
-        this.field[y - 3][x] = this.blockChar
-        this.field[y - 2][x - 1] = this.blockChar
-        this.field[y - 2][x] = this.blockChar
-        this.field[y - 2][x + 1] = this.blockChar
-        this.field[y - 1][x] = this.blockChar
-        this.field[y][x - 1] = this.blockChar
-        this.field[y][x + 1] = this.blockChar
+        this.blocks[y - 3][x] = this.game.activeChar
+        this.blocks[y - 2][x - 1] = this.game.activeChar
+        this.blocks[y - 2][x] = this.game.activeChar
+        this.blocks[y - 2][x + 1] = this.game.activeChar
+        this.blocks[y - 1][x] = this.game.activeChar
+        this.blocks[y][x - 1] = this.game.activeChar
+        this.blocks[y][x + 1] = this.game.activeChar
     }
 
     deleteCar(y, x) {
-        this.field[y - 3][x] = 0
-        this.field[y - 2][x - 1] = 0
-        this.field[y - 2][x] = 0
-        this.field[y - 2][x + 1] = 0
-        this.field[y - 1][x] = 0
-        this.field[y][x - 1] = 0
-        this.field[y][x + 1] = 0
+        this.blocks[y - 3][x] = this.game.inactiveChar
+        this.blocks[y - 2][x - 1] = this.game.inactiveChar
+        this.blocks[y - 2][x] = this.game.inactiveChar
+        this.blocks[y - 2][x + 1] = this.game.inactiveChar
+        this.blocks[y - 1][x] = this.game.inactiveChar
+        this.blocks[y][x - 1] = this.game.inactiveChar
+        this.blocks[y][x + 1] = this.game.inactiveChar
     }
 
     moveCarLeft() {
@@ -332,7 +414,7 @@ class Field {
         for (let i = this.game.height - 1; i >= 0; i--) {
             setTimeout(() => {
                 for (let j = 0; j < this.fieldWidth; j++) {
-                    this.field[i][j] = this.blockChar
+                    this.blocks[i][j] = this.game.activeChar
                 }
             }, 24 * this.game.endAnimationSpeed - i * this.game.endAnimationSpeed)
         }
@@ -340,38 +422,32 @@ class Field {
             for (let i = this.game.height - 1; i >= 0; i--) {
                 setTimeout(() => {
                     for (let j = 0; j < this.fieldWidth; j++) {
-                        this.field[i][j] = 0
+                        this.blocks[i][j] = this.game.inactiveChar
                     }
                 }, i * this.game.endAnimationSpeed)
             }
         }, 24 * this.game.endAnimationSpeed + this.game.endAnimationSpeed * 2)
     }
 
-    print() {
-        if (this.game.isOn) {
-            this.update()
-        } else if (!this.endShown) {
-            this.endGame()
-            this.endShown = true
-        }
-        for (let i = 0; i < this.game.height; i++) {
-            console.log(this.field[i].join(' '), '                        ', i)
-        }
-    }
-
     render() {
         let field = document.getElementById('field')
-        field.innerHTML = ''
+        if (field.children.length === 0 || field.children.length !== this.fieldWidth * (this.game.height - 4)) {
+            field.innerHTML = ''
+            for (let i = 4; i < this.game.height; i++) {
+                for (let j = 0; j < this.fieldWidth; j++) {
+                    let block = document.createElement('td')
+                    block.setAttribute('class', 'block')
+                    field.appendChild(block)
+                }
+            }
+        }
         for (let i = 4; i < this.game.height; i++) {
             for (let j = 0; j < this.fieldWidth; j++) {
-                if (this.field[i][j] === this.blockChar) {
-                    let activeBlock = document.createElement('td')
-                    activeBlock.setAttribute('class', 'block block--active')
-                    field.appendChild(activeBlock)
+                let block = field.children[(i - 4) * this.fieldWidth + j]
+                if (this.blocks[i][j] === this.game.activeChar) {
+                    block.setAttribute('class', 'block block--active')
                 } else {
-                    let inactiveBlock = document.createElement('td')
-                    inactiveBlock.setAttribute('class', 'block block--inactive')
-                    field.appendChild(inactiveBlock)
+                    block.setAttribute('class', 'block block--inactive')
                 }
             }
         }
@@ -391,6 +467,7 @@ class Field {
         let rightButton = document.getElementById('right')
         let restartButton = document.getElementById('down')
         let speedUpButton = document.getElementById('up')
+        let pauseButton = document.getElementById('pause')
         document.addEventListener('keydown', (event) => {
             if (event.code === 'ArrowLeft') {
                 leftButton.classList.add('control_button--active')
@@ -401,11 +478,11 @@ class Field {
             } else if (event.code === 'ArrowDown') {
                 restartButton.classList.add('control_button--active')
                 game.pause()
+                game.interface.destroy()
                 game = new Game()
                 let field = document.getElementById('field')
                 field.setAttribute('class', 'field--two_lined')
                 game.render()
-
             } else if (event.code === 'ArrowUp') {
                 speedUpButton.classList.add('control_button--active')
                 if (!game.speedUp) {
@@ -413,15 +490,18 @@ class Field {
                     game.speedUp = true
                 }
             } else if (event.code === 'Space') {
-                let pause = document.getElementById('pause')
+                let pause = document.getElementById('pause_text')
                 pause.classList.toggle('pause--inactive')
                 if (game.loop) {
                     game.pause()
+                    pauseButton.classList.add('control_button--active')
                 } else {
                     game.start()
+                    pauseButton.classList.remove('control_button--active')
                 }
             }
         }, false);
+
         document.addEventListener('keyup', (event) => {
             if (event.code === 'ArrowUp') {
                 if (game.speedUp) {
@@ -435,8 +515,27 @@ class Field {
                 rightButton.classList.remove('control_button--active')
             } else if (event.code === 'ArrowDown') {
                 restartButton.classList.remove('control_button--active')
+                pauseButton.classList.remove('control_button--active')
             }
         })
+        pauseButton.addEventListener('click', () => {
+            let pause = document.getElementById('pause_text')
+            pause.classList.toggle('pause--inactive')
+            if (game.loop) {
+                game.pause()
+            } else {
+                game.start()
+            }
+            pauseButton.blur()
+        })
+        pauseButton.addEventListener('touchstart', () => {
+            if (game.loop) {
+                pauseButton.classList.add('control_button--active')
+            } else {
+                pauseButton.classList.remove('control_button--active')
+            }
+        })
+
         leftButton.addEventListener('click', () => {
             game.field.moveCarLeft()
         })
@@ -445,20 +544,45 @@ class Field {
         })
         restartButton.addEventListener('click', () => {
             game.pause()
+            game.interface.destroy()
             game = new Game()
             let field = document.getElementById('field')
             field.setAttribute('class', 'field--two_lined')
             game.render()
+            pauseButton.classList.remove('control_button--active')
         })
+
+        restartButton.addEventListener('mousedown', () => {
+            restartButton.classList.add('control_button--active')
+        })
+        restartButton.addEventListener('mouseup', () => {
+            restartButton.classList.remove('control_button--active')
+        })
+
+        leftButton.addEventListener('mousedown', () => {
+            leftButton.classList.add('control_button--active')
+        })
+        leftButton.addEventListener('mouseup', () => {
+            leftButton.classList.remove('control_button--active')
+        })
+        rightButton.addEventListener('mousedown', () => {
+            rightButton.classList.add('control_button--active')
+        })
+        rightButton.addEventListener('mouseup', () => {
+            rightButton.classList.remove('control_button--active')
+        })
+
         speedUpButton.addEventListener('mouseup', () => {
             game.updateSpeed(game.speed + 20)
             game.speedUp = false
+            speedUpButton.classList.remove('control_button--active')
         })
         speedUpButton.addEventListener('mousedown', () => {
             if (!game.speedUp) {
                 game.updateSpeed(game.speed - 20)
                 game.speedUp = true
             }
+            speedUpButton.classList.add('control_button--active')
         })
         speedUpButton.addEventListener('touchstart', () => {
             if (!game.speedUp) {

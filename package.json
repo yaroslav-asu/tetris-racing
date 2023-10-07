@@ -1,10 +1,13 @@
 {
   "scripts": {
     "start": "webpack-dev-server --open --mode development --config webpack.config.js",
-    "build": "webpack --mode production"
+    "build": "webpack --mode production",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "private": true,
   "devDependencies": {
+    "gh-pages": "^6.0.0",
     "html-webpack-plugin": "^5.5.3",
     "sass": "^1.69.0",
     "sass-loader": "^13.3.2",
@@ -20,10 +23,13 @@
     "webpack-dev-server": "^4.15.1",
     "webpack-dotenv-plugin": "^2.1.0"
   },
-  "name": "races_from_tetris",
+  "name": "tetris_races",
   "version": "1.0.0",
   "main": "webpack.config.js",
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "repository": {
+    "url": "git+https://github.com/yaroslav_asu/tetris-racing.git"
+  }
 }
